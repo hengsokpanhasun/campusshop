@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+# build output
+.next/
+dist/
+# env & secrets — NEVER commit (Week 12)
+.env
+.env.local
+.env.*.local
+*.pem
+# prisma local db / generated
+api/prisma/*.db
+# logs & OS
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Slash Code scaffolding + local build artifacts (not part of the app)
+SLASH.md
+memory/
+tmp/
+book/
