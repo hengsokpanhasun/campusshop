@@ -1,0 +1,92 @@
+// CampusShop data model. The RELATIONS here are the heart of the capstone (Week 9–10):
+//   User(MERCHANT) owns a Shop → a Shop has many Products → a Product belongs to a Category.
+//   A customer places an Order → an Order has many OrderItems → each OrderItem points to a Product.
+
+generator client {
+  provider      = "prisma-client-js"
+  // "native" for local dev (Windows/Mac); the musl target is for the Alpine Docker image.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  MERCHANT
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(CUSTOMER)
+  shops        Shop[]   // a merchant can own shops
+  orders       Order[]  // a customer can place orders
+  createdAt    DateTime @default(now())
+}
+
+model Shop {
+  id        Int       @id @default(autoincrement())
+  name      String
+  owner     User      @relation(fields: [ownerId], references: [id])
+  ownerId   Int
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  slug     String    @unique
+  products Product[]
+}
+
+model Product {
+  id          Int         @id @default(autoincrement())
+  title       String
+  description String      @default("")
+  priceCents  Int // store money as integer cents — never floats
+  stock       Int         @default(0)
+  image       String      @default("")
+  shop        Shop        @relation(fields: [shopId], references: [id])
+  shopId      Int
+  category    Category    @relation(fields: [categoryId], references: [id])
+  categoryId  Int
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+
+  @@index([categoryId])
+  @@index([shopId])
+}
+
+model Order {
+  id         Int         @id @default(autoincrement())
+  customer   User        @relation(fields: [customerId], references: [id])
+  customerId Int
+  status     OrderStatus @default(PENDING)
+  totalCents Int
+  items      OrderItem[]
+  createdAt  DateTime    @default(now())
+
+  @@index([customerId])
+}
+
+model OrderItem {
+  id         Int     @id @default(autoincrement())
+  order      Order   @relation(fields: [orderId], references: [id])
+  orderId    Int
+  product    Product @relation(fields: [productId], references: [id])
+  productId  Int
+  qty        Int
+  priceCents Int // price captured at purchase time (snapshot)
+}
