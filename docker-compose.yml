@@ -1,0 +1,53 @@
+# Run the WHOLE stack (web + api + database) with one command (Week 13).
+#   docker compose up --build
+# Then open the web app at http://localhost:3000
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: campusshop
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./api
+    environment:
+      DATABASE_URL: postgresql://postgres:dev@db:5432/campusshop?schema=public
+      JWT_SECRET: change-me-in-production
+      WEB_ORIGIN: http://localhost:3000
+      PORT: "4000"
+      # KHQR payment (Week 12). Get KHQR_API_KEY from the Slash admin panel → System → "KHQR Payment API".
+      # Without a key the payment panel still renders but generate returns 401 — set it in a .env file.
+      KHQR_API_BASE: https://chat.slashaiagent.xyz/api/khqr
+      KHQR_API_KEY: ${KHQR_API_KEY:-}
+      MERCHANT_ACCOUNT: ${MERCHANT_ACCOUNT:-hengsokpanhasun@aclebank1}
+      MERCHANT_NAME: ${MERCHANT_NAME:-CampusShop}
+    # sync schema, seed demo data, then start
+    command: sh -c "npx prisma db push --accept-data-loss && npx tsx prisma/seed.ts && npm start"
+    ports:
+      - "4000:4000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./web
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000   # browser → published port
+      API_URL: http://api:4000                      # SSR (server component) → internal service name
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
