@@ -1,0 +1,36 @@
+# Continuous Integration (Week 14): on every push, install + typecheck + test both apps.
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npx prisma generate
+      - run: npm run lint        # tsc --noEmit (typecheck)
+      - run: npm test            # unit tests (pricing). API integration tests need a DB — run locally.
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm test            # unit tests (cart)
+      - run: npm run build       # Next.js production build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
